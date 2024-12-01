@@ -1,9 +1,11 @@
-import json
+import base64
 import cv2 as cv
-from fastapi import APIRouter, FastAPI, WebSocket
+from typing import Annotated
 
-from src import main
-from src.imgproc import cvt
+from fastapi import APIRouter, Form, UploadFile
+import numpy as np
+
+from app import main
 
 router = APIRouter()
 
@@ -14,30 +16,26 @@ class PhoneData:
         self.clip_data = clip_data
 
 
-@router.websocket('/phone')
-async def upload(websocket: WebSocket):
-    await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        json_data = json.loads(data)
+@router.post('/phone-upload')
+async def phone_upload(id: Annotated[str, Form()], phone_img: UploadFile, clip: UploadFile):
+    phone_img_contents = await phone_img.read()
+    clip_contents = await clip.read()
 
-        # Try sending over as bytes in chunks instead?
-        # nparr = np.frombuffer(data, np.uint8)
-        # img = cv.imdecode(nparr, cv.IMREAD_COLOR)
+    img = np.fromstring(phone_img_contents, dtype=np.uint8)
+    img = cv.imdecode(img, cv.IMREAD_COLOR)
 
-        # Read data from socket
-        event_id = json_data['id']
-        img = cvt.decode_img(json_data['img'])
-        clip_data = json_data['clip']
+    clip = np.fromstring(clip_contents, dtype=np.uint8)
+    clip = cv.imdecode(clip, cv.IMREAD_COLOR)
+    _, encoded_clip = cv.imencode('.jpg', clip)
+    encoded_clip = base64.b64encode(encoded_clip).decode('ascii')
 
-        main.phone_data[event_id] = PhoneData(phone_img=img, clip_data=clip_data)
+    # cv.imshow("img", img)
+    # cv.imshow("clip", clip)
+    # cv.waitKey(0)
 
-        # Notify computer
-        if main.computer_socket:
-            await main.computer_socket.send_text(event_id)
+    main.phone_data[id] = PhoneData(phone_img=img, clip_data=encoded_clip)
 
-        cv.imshow(str(event_id), img)
-        # cv.imshow(str(event_id + "1"), clip_img)
-        cv.waitKey(0)
+    # Notify computer
+    if main.computer_socket:
+        await main.computer_socket.send_text(id)
 
-        await websocket.send_text(f"Received: {data}")
