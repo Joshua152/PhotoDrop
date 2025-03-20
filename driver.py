@@ -11,7 +11,7 @@ Find where the phone was pointing in the mac
 
 Assume phone cursor at center of phone
 
-Pipeline:
+Pipeline:lear
 Read images
 Match keypoints
 Find homography
