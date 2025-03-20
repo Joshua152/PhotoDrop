@@ -1,0 +1,42 @@
+package com.joshuaau.photodrop.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// Light color scheme
+val Yellow40 = Color(0xff857425)
+val Yellow90 = Color(0xff857425)
+val Gray40 = Color(0xff4a4327)
+val Gray90 = Color(0xff7d7455)
+val Green40 = Color(0xff284a34)
+val Green90 = Color(0xff597d64)
+val Red40 = Color(0xff8c0009)
+val Red90 = Color(0xffda342e)
+val Beige87 = Color(0xffe0d9cc)
+val Beige90 = Color(0xffe8e2d4)
+val Beige92 = Color(0xffeee8da)
+val Beige94 = Color(0xfff4eddf)
+val Beige96 = Color(0xfffaf3e5)
+val Beige98 = Color(0xfffff9ee)
+val Black10 = Color(0xff1e1b13)
+val Black30 = Color(0xff474335)
+val Black50 = Color(0xff645f50)
+val Black80 = Color(0xff807a6b)
+
+// Dark color scheme
+val Yellow20 = Color(0xff1c1600)
+val Yellow30 = Color(0xffa3903f)
+val Yellow80 = Color(0xffe0ca72)
+val Gray20 = Color(0xff1b1602)
+val Gray30 = Color(0xff9a916f)
+val Gray80 = Color(0xffd6caa5)
+val Green20 = Color(0xff001b0c)
+val Green30 = Color(0xff75997f)
+val Green80 = Color(0xffadd4b7)
+val Red20 = Color(0xff370001)
+val Red30 = Color(0xffff5449)
+val Red80 = Color(0xffffbab1)
+val Black6 = Color(0xff15130b)
+val Black12 = Color(0xff222017)
+val Black17 = Color(0xff2d2a21)
+val Black24 = Color(0xff38352b)
+val Black90 = Color(0xfffffaf5)
