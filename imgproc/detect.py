@@ -38,7 +38,9 @@ def find_center(phone_img, comp_img):
                        flags=2)
 
     match_img = cv.drawMatches(out_phone, kp_phone, out_comp, kp_comp, good, None, **draw_params)
+    cv.imwrite("runs/match.jpg", match_img)
     # cv.imshow("Match", match_img)
+    # cv.waitKey(0)
     # cv.imshow("Phone", out_phone)
     # cv.imshow("Comp", out_comp)
 

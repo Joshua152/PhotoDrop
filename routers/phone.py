@@ -8,11 +8,11 @@ from pydantic import BaseModel
 
 from fastapi import APIRouter, Form, UploadFile
 import numpy as np
+import json
 
 from app import main
 from ..imgproc import segment
 
-import pyperclip
 
 router = APIRouter()
 
@@ -46,6 +46,8 @@ async def phone_clip(phone_clip_params: PhoneClipParams):
     # data = await phone_img.read()
     # img = np.fromstring(data, dtype=np.uint8)
     # img = cv.imdecode(img, cv.IMREAD_COLOR)
+
+    print("Phone clip")
 
     img = await base64_to_cv2(phone_clip_params.phone_img)
     bbox = phone_clip_params.bbox.split(' ')
@@ -121,12 +123,21 @@ async def phone_clip(phone_clip_params: PhoneClipParams):
 
 @router.post('/phone-upload')
 async def phone_upload(phone_upload_params: PhoneUploadParams):
+    print("Phone upload")
     img = await base64_to_cv2(phone_upload_params.phone_img)
     main.phone_data[phone_upload_params.id] = PhoneData(phone_img=img, clip_data=phone_upload_params.clip)
 
+    # cv2.imshow("cvt", img)
+    # cv2.waitKey(0)
+
     # Notify computer
     if main.computer_socket:
-        await main.computer_socket.send_text(phone_upload_params.id)
+        send = {
+            'message': 'trigger',
+            'id': phone_upload_params.id
+        }
+
+        await main.computer_socket.send_text(json.dumps(send))
 
 
 async def base64_to_cv2(base64_str):
