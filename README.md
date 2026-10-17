@@ -4,6 +4,19 @@ PhotoDrop segments an object from one phone photo, then matches a second photo
 of a computer display to a screenshot to estimate where the camera was pointing.
 This documents the current implementation, including known client limitations.
 
+## Run the project
+1. Go to the api directory and run the following command (make sure to have a proper environment)
+```bash
+fastapi run
+```
+
+2. In a separate terminal, create a tunnel
+```bash
+cloudflared tunnel --url http://localhost:8000
+```
+
+3. In the output of the cloudflare tunnel command, look for the link and paste it in the android app's `APIClient.kt`
+
 ## Request flow
 
 1. The computer opens a WebSocket connection to `/computer`.
