@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket
 
-from .routers import computer, phone
+from .routers import phone
+from .routers import computer
 
 app = FastAPI()
 app.include_router(phone.router)
