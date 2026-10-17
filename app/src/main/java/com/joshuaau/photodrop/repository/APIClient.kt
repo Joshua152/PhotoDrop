@@ -14,7 +14,7 @@ object APIClient {
         val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
 
         retrofit = Retrofit.Builder()
-            .baseUrl("https://e8c9-2605-ad80-20-688e-88d2-f7a-1010-4936.ngrok-free.app/")
+            .baseUrl("https://kid-suggested-customized-conclusions.trycloudflare.com/")
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()

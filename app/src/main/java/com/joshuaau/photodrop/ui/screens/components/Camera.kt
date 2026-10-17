@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -100,6 +101,7 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
     val colorPrimary = MaterialTheme.colorScheme.primary
 
     var borderWidth = 0.dp
+    var showCenterDot = false
     if (
         cameraViewState.processingState == CameraClipState.PROCESSING_CLIP ||
         cameraViewState.processingState == CameraClipState.CLIPPED
@@ -109,6 +111,7 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
 
     if (cameraViewState.processingState == CameraClipState.CLIPPED) {
         borderWidth = 10.dp
+        showCenterDot = true
     }
 
     Log.i("PHOTO", "State: ${cameraViewState.processingState}")
@@ -150,27 +153,22 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
                 }
             )
 
-//            TODO
-//            if (cameraViewState.clip != null) {
-//                val offsetXDp = with(LocalDensity.current) { (cameraViewState.clipOffsetXPercent * previewWidth).toDp() }
-//                val offsetYDp = with(LocalDensity.current) { (cameraViewState.clipOffsetYPercent * previewHeight).toDp() }
-//
-//                print("Ofset: ${cameraViewState.clipOffsetXPercent} ${cameraViewState.clipOffsetYPercent}")
-//                println("Offset: ${cameraViewState.clipOffsetXPercent} ${cameraViewState.clipOffsetYPercent} $offsetXDp $offsetYDp")
-//
-//                Image(
-//                    modifier = Modifier.padding(start = 200.dp, top = 200.dp),
-//                    bitmap = cameraViewState.clip!!.asImageBitmap(),
-//                    contentDescription = "Clip"
-//                )
-//            }
-
             if (cameraViewState.processingState == CameraClipState.IDLE || cameraViewState.processingState == CameraClipState.PROCESSING_CLIP) {
                 ResizeableRect(
                     modifier = Modifier.fillMaxSize(),
                     500,
                     500,
                     cameraViewModel::setBBoxSize
+                )
+            }
+
+            if (showCenterDot) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(width = 15.dp, height = 15.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
                 )
             }
 
