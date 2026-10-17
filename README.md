@@ -177,29 +177,3 @@ view_y = view_top - global_y
 
 For a cropped or letterboxed screenshot, first undo that mapping: the API's
 coordinates always refer to the submitted image itself.
-
-## Known limitations found during review
-
-- **Mac display selection:** `Websocket.swift` still captures the display with
-  the smallest display ID; there is no user-facing display picker. Photograph
-  that display. Its full AppKit frame now travels with each screenshot request,
-  and `PhotoSpaceViewModel.swift` converts through the actual canvas's window
-  and view, accounting for display origins and window offsets. Clips are stored
-  in canvas coordinates after placement, so they move with the window.
-- **Android preview mapping:** selection conversion assumes the capture scales
-  to preview height and the box is centered. Verify this against the preview's
-  actual crop and aspect ratio. A pointing reticle must map to the center of
-  the captured image, since that is the point the API projects.
-- **Transparency:** the API returns a PNG clip, but Android's
-  `CameraViewModel.bitmapToBase64` re-encodes it as JPEG before uploading it,
-  losing alpha. Preserve PNG encoding when uploading the clip.
-- **Failure handling:** insufficient features, poor matches, an invalid
-  homography, and empty segmentation are not explicitly handled and can cause
-  failures instead of structured results. Matching a planar display gives an
-  estimate, not a guarantee of exact physical pointing accuracy.
-- **Session lifecycle:** there is one global computer socket and a process-local
-  in-memory event dictionary, with no pairing, authentication, expiration, or
-  deletion after retrieval. Socket disconnect cleanup is not implemented, and
-  multiple server workers do not share events or sockets.
-
-The remaining limitations above require separate changes.
