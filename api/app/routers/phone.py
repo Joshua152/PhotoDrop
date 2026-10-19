@@ -1,151 +1,115 @@
-import base64
+import uuid
 
 import cv2
-import cv2 as cv
-from typing import Annotated
 
 from pydantic import BaseModel
 
-from fastapi import APIRouter, Form, UploadFile
+from fastapi import APIRouter, HTTPException
+from starlette.concurrency import run_in_threadpool
 import numpy as np
 import json
 
 from app import main
+from app.remote import s3
 from ..imgproc import segment
 
 
-router = APIRouter()
+router = APIRouter(prefix='/phone', tags=['phone'])
 
 
-class PhoneData:
-    def __init__(self, phone_img, clip_data):
-        self.phone_img = phone_img
-        self.clip_data = clip_data
-
-
-class PhoneUploadParams(BaseModel):
+class ClipUpload(BaseModel):
     id: str
-    phone_img: str
-    clip: str
+    should_segment: bool
 
 
-class PhoneClipParams(BaseModel):
-    phone_img: str
-    bbox: str
+class ComputerPictureUpload(BaseModel):
+    id: str
 
 
-@router.post('/phone-clip')
-async def phone_clip(phone_clip_params: PhoneClipParams):
-    """
-    Endpoint to upload the initial clip image to run a segmentation analysis on. Returns a cropped image of the clip
-    along with the offset from the top left of the bbox
-    :param phone_clip_params: The expected JSON body format
-        phone_img: base64 encoded camera capture
-        bbox: bounding box of where to include the segmentation
-    """
-    # data = await phone_img.read()
-    # img = np.fromstring(data, dtype=np.uint8)
-    # img = cv.imdecode(img, cv.IMREAD_COLOR)
-
-    print("Phone clip")
-
-    img = await base64_to_cv2(phone_clip_params.phone_img)
-    bbox = phone_clip_params.bbox.split(' ')
-    bbox = list(map(int, bbox))
-
-    print(img.shape, bbox)
-
-    clip, offset = segment.segment(img, bbox)
-
-    _, encoded_clip = cv.imencode('.png', clip)
-    encoded_clip = base64.b64encode(encoded_clip).decode('ascii')
-
-    out = {
-        'clip': encoded_clip,
-        'offset_x_percent': offset[0].item() / img.shape[1],
-        'offset_y_percent': offset[1].item() / img.shape[0]
+@router.get('/upload-urls')
+async def upload_urls():
+    id = uuid.uuid4()
+    clip_upload_url = s3.create_presigned_upload_url(s3.get_clip_object_name(id))
+    if clip_upload_url is None:
+        raise HTTPException(status_code=500, detail='Failed to generate clip upload URL')
+    computer_picture_upload_url = s3.create_presigned_upload_url(s3.get_computer_picture_object_name(id))
+    if computer_picture_upload_url is None:
+        raise HTTPException(status_code=500, detail='Failed to generate computer picture upload URL')
+    return {
+        'id': id,
+        'clip_upload_url': clip_upload_url,
+        'computer_picture_upload_url': computer_picture_upload_url,
     }
 
-    return out
 
+@router.post('/notify-clip-uploaded')
+async def notify_clip_uploaded(clip_upload: ClipUpload):
+    '''
+    Send the compute a download url to get the clip ahead of time
+    '''
+    clip_object_key = s3.get_clip_object_name(clip_upload.id)
 
-# @router.post('/phone-clip')
-# async def phone_clip(phone_img: UploadFile, bbox: Annotated[str, Form()]):
-#     """
-#     Endpoint to upload the initial clip image to run a segmentation analysis on. Returns a cropped image of the clip
-#     along with the offset from the top left of the bbox
-#     :param phone_img: The base64 encoded image
-#     :param bbox: A bbox string in the format "xmin ymin xmax max"
-#     :return: A json with the cropped image and the offset from the top left of the
-#     """
-#     data = await phone_img.read()
-#     img = np.fromstring(data, dtype=np.uint8)
-#     img = cv.imdecode(img, cv.IMREAD_COLOR)
-#
-#     bbox = bbox.split(' ')
-#     bbox = list(map(int, bbox))
-#     clip, offset = segment.segment(img, bbox)
-#
-#     _, encoded_clip = cv.imencode('.png', clip)
-#     encoded_clip = base64.b64encode(encoded_clip).decode('ascii')
-#
-#     out = {
-#         'clip': encoded_clip,
-#         'offset': f'{offset[0]} {offset[1]}'
-#     }
-#
-#     return out
+    if clip_upload.should_segment:
+        await run_in_threadpool(_segment_uploaded_clip, clip_object_key)
 
-
-# @router.post('/phone-upload')
-# async def phone_upload(id: Annotated[str, Form()], phone_img: UploadFile, clip: UploadFile):
-#     phone_img_contents = await phone_img.read()
-#     clip_contents = await clip.read()
-#
-#     img = np.fromstring(phone_img_contents, dtype=np.uint8)
-#     img = cv.imdecode(img, cv.IMREAD_COLOR)
-#
-#     clip = np.fromstring(clip_contents, dtype=np.uint8)
-#     clip = cv.imdecode(clip, cv.IMREAD_COLOR)
-#     _, encoded_clip = cv.imencode('.jpg', clip)
-#     encoded_clip = base64.b64encode(encoded_clip).decode('ascii')
-#
-#     # cv.imshow("img", img)
-#     # cv.imshow("clip", clip)
-#     # cv.waitKey(0)
-#
-#     main.phone_data[id] = PhoneData(phone_img=img, clip_data=encoded_clip)
-#
-#     # Notify computer
-#     if main.computer_socket:
-#         await main.computer_socket.send_text(id)
-
-
-@router.post('/phone-upload')
-async def phone_upload(phone_upload_params: PhoneUploadParams):
-    print("Phone upload")
-    img = await base64_to_cv2(phone_upload_params.phone_img)
-    main.phone_data[phone_upload_params.id] = PhoneData(phone_img=img, clip_data=phone_upload_params.clip)
-
-    # cv2.imshow("cvt", img)
-    # cv2.waitKey(0)
-
-    # Notify computer
     if main.computer_socket:
+        clip_download_url = s3.create_presigned_download_url(clip_object_key)
+        if clip_download_url is None:
+            raise HTTPException(status_code=500, detail='Failed to generate clip download URL')
+
         send = {
-            'message': 'trigger',
-            'id': phone_upload_params.id
+            'message': 'download_clip',
+            'id': clip_upload.id,
+            'clip_download_url': clip_download_url,
         }
 
         await main.computer_socket.send_text(json.dumps(send))
 
 
-async def base64_to_cv2(base64_str):
-    img_bytes = base64.b64decode(base64_str)
-    img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
-    img = cv.imdecode(img_arr, flags=cv2.IMREAD_COLOR)
+@router.post('/notify-computer-picture-uploaded')
+async def notify_computer_picture_uploaded(computer_picture_upload: ComputerPictureUpload):
+    '''
+    Send the trigger to the computer to take the screenshot with a presigned uploade url
 
-    # cv2.imshow("cvt", img)
-    # cv2.waitKey(0)
+    Need to send the computer the id so that when we get the notification from the 
+    computer that it is done uploading, we can match to the phone upload
 
-    return img
+    We also assume the object has been uploaded successfully
+    '''
+    if main.computer_socket:
+        ss_object_key = s3.get_screenshot_object_name(computer_picture_upload.id)
+        ss_upload_url = s3.create_presigned_upload_url(ss_object_key)
+        if ss_upload_url is None:
+            raise HTTPException(status_code=500, detail='Failed to generate screenshot upload URL')
+
+        send = {
+            'message': 'trigger',
+            'id': computer_picture_upload.id,
+            'ss_upload_url': ss_upload_url,
+        }
+
+        await main.computer_socket.send_text(json.dumps(send))
+
+
+def _segment_uploaded_clip(clip_object_key):
+    response = s3.get_object(clip_object_key)
+    body = response['Body']
+    try:
+        image_bytes = body.read()
+    finally:
+        body.close()
+
+    img = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=422, detail='Uploaded clip is not a valid image')
+
+    height, width = img.shape[:2]
+    clip, _ = segment.segment(img, (0, 0, width, height))
+    if clip.size == 0:
+        raise HTTPException(status_code=422, detail='No segments found in uploaded clip')
+
+    success, encoded_clip = cv2.imencode('.png', clip)
+    if not success:
+        raise HTTPException(status_code=500, detail='Failed to encode segmented clip')
+
+    s3.put_object(clip_object_key, encoded_clip.tobytes(), content_type='image/png')
