@@ -2,7 +2,27 @@ import cv2 as cv
 import numpy as np
 
 
+MAX_MATCH_DIMENSION = 1280
+
+
+def _resize_for_matching(img):
+    height, width = img.shape[:2]
+    if max(height, width) <= MAX_MATCH_DIMENSION:
+        return img
+
+    scale = MAX_MATCH_DIMENSION / max(height, width)
+    return cv.resize(
+        img,
+        (max(1, round(width * scale)), max(1, round(height * scale))),
+        interpolation=cv.INTER_AREA,
+    )
+
+
 def find_center(phone_img, comp_img):
+    original_phone_height, original_phone_width = phone_img.shape[:2]
+    original_comp_height, original_comp_width = comp_img.shape[:2]
+    phone_img = _resize_for_matching(phone_img)
+    comp_img = _resize_for_matching(comp_img)
     _, kp_phone, des_phone = find_keypoints(phone_img)
     _, kp_comp, des_comp = find_keypoints(comp_img)
 
@@ -24,7 +44,11 @@ def find_center(phone_img, comp_img):
     out_comp = comp_img.copy()
     # out_comp = cv.polylines(out_comp, [np.int32(dst)], True, 255, 3, cv.LINE_AA)
 
-    phone_center = (phone_img.shape[1] // 2, phone_img.shape[0] // 2)
+    # Map the original center into the resized phone image coordinates.
+    phone_center = (
+        (original_phone_width // 2) * phone_img.shape[1] / original_phone_width,
+        (original_phone_height // 2) * phone_img.shape[0] / original_phone_height,
+    )
     # out_phone = cv.circle(phone_img, phone_center, radius=20, color=(255, 255, 0), thickness=-1)
 
     comp_pt = H @ np.array([phone_center[0], phone_center[1], 1])
@@ -40,6 +64,9 @@ def find_center(phone_img, comp_img):
     # match_img = cv.drawMatches(out_phone, kp_phone, out_comp, kp_comp, good, None, **draw_params)
     # cv.imwrite("runs/match.jpg", match_img)
 
+    # Use actual dimensions to account for rounding during resizing.
+    x = int((comp_pt[0] / comp_pt[2]) * original_comp_width / comp_img.shape[1])
+    y = int((comp_pt[1] / comp_pt[2]) * original_comp_height / comp_img.shape[0])
     return x, y
 
 
