@@ -1,21 +1,22 @@
-import json
+import time
 
-from fastapi import APIRouter, HTTPException, WebSocket
+from fastapi import APIRouter, WebSocket
 
 from pydantic import BaseModel
 
 from app import main
-from app.imgproc import cvt, detect
+from app.imgproc import detect
+from app.remote import s3
 
-router = APIRouter()
+
+router = APIRouter(prefix='/computer', tags=['computer'])
 
 
-class ComputerUploadParams(BaseModel):
+class ComputerScreenshot(BaseModel):
     id: str
-    img: str
 
 
-@router.websocket('/computer')
+@router.websocket('')
 async def computer(websocket: WebSocket):
     await websocket.accept()
 
@@ -25,24 +26,39 @@ async def computer(websocket: WebSocket):
         # Need to keep the connection open
         await websocket.receive_text()
 
-@router.post('/computer-send')
-async def computer_send(params: ComputerUploadParams):
-    if params.id not in main.phone_data:
-        raise HTTPException(status_code=400, detail='Event ID not found')
-    
-    phone_res = main.phone_data[params.id]
 
-    phone_img = phone_res.phone_img
-    clip_data = phone_res.clip_data
-    computer_img = cvt.decode_img(params.img)
+@router.post('/calculate-clip-location')
+def calculate_clip_location(params: ComputerScreenshot):
+    '''
+    Need to get the corresponding phone upload picture
+    Also need to download the just uploaded computer screnshot
+    Then, find the center and return
+    '''
+    phone_img_key = s3.get_computer_picture_object_name(params.id)
+    ss_img_key = s3.get_screenshot_object_name(params.id)
 
-    x, y = detect.find_center(phone_img, computer_img)
-    x /= computer_img.shape[1]
-    y /= computer_img.shape[0]
+    t1 = time.perf_counter()
+
+    phone_img = s3.get_image_as_cv2(phone_img_key)
+
+    t2 = time.perf_counter()
+    print(f'Phone download: {t2-t1}')
+
+    ss_img = s3.get_image_as_cv2(ss_img_key)
+
+    t3 = time.perf_counter()
+    print(f'SS download: {t3-t2}')
+
+    x, y = detect.find_center(phone_img, ss_img)
+    x /= ss_img.shape[1]
+    y /= ss_img.shape[0]
     send = {
+        'message': 'clip_location',
         'x': x,
         'y': y,
-        'clip': clip_data
     }
+
+    t4 = time.perf_counter()
+    print(f'Find center: {t4-t3}')
 
     return send

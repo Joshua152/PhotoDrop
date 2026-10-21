@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException
 from starlette.concurrency import run_in_threadpool
-import numpy as np
 import json
 
 from app import main
@@ -83,7 +82,7 @@ async def notify_computer_picture_uploaded(computer_picture_upload: ComputerPict
             raise HTTPException(status_code=500, detail='Failed to generate screenshot upload URL')
 
         send = {
-            'message': 'trigger',
+            'message': 'screenshot',
             'id': computer_picture_upload.id,
             'ss_upload_url': ss_upload_url,
         }
@@ -92,16 +91,7 @@ async def notify_computer_picture_uploaded(computer_picture_upload: ComputerPict
 
 
 def _segment_uploaded_clip(clip_object_key):
-    response = s3.get_object(clip_object_key)
-    body = response['Body']
-    try:
-        image_bytes = body.read()
-    finally:
-        body.close()
-
-    img = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
-    if img is None:
-        raise HTTPException(status_code=422, detail='Uploaded clip is not a valid image')
+    img = s3.get_image_as_cv2(clip_object_key)
 
     height, width = img.shape[:2]
     clip, _ = segment.segment(img, (0, 0, width, height))

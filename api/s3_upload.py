@@ -6,7 +6,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-IMAGE_PATH = "/Users/joshuaau/Downloads/IMG_2130.jpg"
+IMAGE_PATH = "/Users/joshuaau/Downloads/Screenshot 2026-10-20 at 11.56.21 PM.png"
 # If the URL was signed with ContentType, set this to that exact value.
 CONTENT_TYPE = 'image/jpg'  # For example: "image/png"
 

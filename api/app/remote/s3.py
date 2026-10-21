@@ -3,7 +3,10 @@ import os
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
+import cv2
 from dotenv import load_dotenv
+from fastapi import HTTPException
+import numpy as np
 
 
 load_dotenv(dotenv_path='app/.env.local', override=True)
@@ -46,6 +49,22 @@ def put_object(object_path, body, content_type):
     return s3_client.put_object(
         Bucket=bucket_name, Key=object_path, Body=body, ContentType=content_type
     )
+
+
+def get_image_as_cv2(object_name):
+    response = get_object(object_name)
+    body = response['Body']
+    try:
+        image_bytes = body.read()
+    finally:
+        body.close()
+
+    img = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=422, detail='Uploaded clip is not a valid image')
+
+    return img
+    
 
 
 def get_clip_object_name(id):

@@ -11,3 +11,4 @@ def decode_img(base64_text):
     img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
 
     return img
+

@@ -25,24 +25,20 @@ def find_center(phone_img, comp_img):
     # out_comp = cv.polylines(out_comp, [np.int32(dst)], True, 255, 3, cv.LINE_AA)
 
     phone_center = (phone_img.shape[1] // 2, phone_img.shape[0] // 2)
-    out_phone = cv.circle(phone_img, phone_center, radius=20, color=(255, 255, 0), thickness=-1)
+    # out_phone = cv.circle(phone_img, phone_center, radius=20, color=(255, 255, 0), thickness=-1)
 
     comp_pt = H @ np.array([phone_center[0], phone_center[1], 1])
     x = int(comp_pt[0] / comp_pt[2])
     y = int(comp_pt[1] / comp_pt[2])
     out_comp = cv.circle(out_comp, (x, y), radius=20, color=(255, 255, 0), thickness=-1)
 
-    draw_params = dict(matchColor=(0, 255, 0),
-                       singlePointColor=None,
-                       matchesMask=matches_mask,
-                       flags=2)
+    # draw_params = dict(matchColor=(0, 255, 0),
+    #                    singlePointColor=None,
+    #                    matchesMask=matches_mask,
+    #                    flags=2)
 
-    match_img = cv.drawMatches(out_phone, kp_phone, out_comp, kp_comp, good, None, **draw_params)
-    cv.imwrite("runs/match.jpg", match_img)
-    # cv.imshow("Match", match_img)
-    # cv.waitKey(0)
-    # cv.imshow("Phone", out_phone)
-    # cv.imshow("Comp", out_comp)
+    # match_img = cv.drawMatches(out_phone, kp_phone, out_comp, kp_comp, good, None, **draw_params)
+    # cv.imwrite("runs/match.jpg", match_img)
 
     return x, y
 
