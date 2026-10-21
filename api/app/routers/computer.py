@@ -61,4 +61,7 @@ def calculate_clip_location(params: ComputerScreenshot):
     t4 = time.perf_counter()
     print(f'Find center: {t4-t3}')
 
+    # delete the old objects now
+    s3.delete_folder('your-bucket-name', f'{params.id}/')  
+
     return send

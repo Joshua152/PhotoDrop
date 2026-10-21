@@ -51,6 +51,19 @@ def put_object(object_path, body, content_type):
     )
 
 
+def delete_folder(bucket_name, prefix):
+    paginator = s3_client.get_paginator('list_objects_v2')
+    
+    for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+        if 'Contents' in page:
+            delete_us = [{'Key': obj['Key']} for obj in page['Contents']]
+            
+            s3_client.delete_objects(
+                Bucket=bucket_name,
+                Delete={'Objects': delete_us}
+            )
+
+
 def get_image_as_cv2(object_name):
     response = get_object(object_name)
     body = response['Body']
@@ -68,12 +81,12 @@ def get_image_as_cv2(object_name):
 
 
 def get_clip_object_name(id):
-    return f'{id}-clip'
+    return f'{id}/clip'
 
 
 def get_computer_picture_object_name(id):
-    return f'{id}-computer-picture-from-phone'
+    return f'{id}/computer-picture-from-phone'
 
 
 def get_screenshot_object_name(id):
-    return f'{id}-screenshot'
+    return f'{id}/screenshot'

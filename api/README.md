@@ -16,3 +16,12 @@ The server will send a web socket message of the following format after step (2)
 The computer should immediately download the clip and store the `id`
 
 After step (3), the server will send a presigned upload URL to the computer to upload their screenshot. The computer should upload as soon as possible.
+
+
+---
+Optimizations:
+1. Upload a resized version of the images to increase upload/download speeds (resize client side to 1280)
+2. Download the phone image into memeory in notify_computer_picture_uploaded? Don't redownload it
+
+TODO:
+1. Make sure to delete the old s3 objects once getting the location
