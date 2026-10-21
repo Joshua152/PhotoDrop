@@ -176,7 +176,7 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
                 onClick = {
                     Toast.makeText(context, "TAKING PICTURE", Toast.LENGTH_SHORT).show()
 
-                    cameraViewModel.setProcessingState()
+                    cameraViewModel.setNextProcessingState()
                     takePicture(context, imageCapture!!) { bm ->
                         if (bm == null) {
                             Toast.makeText(context, "Error taking picture", Toast.LENGTH_SHORT).show()
@@ -243,6 +243,11 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
                 modifier = Modifier.align(Alignment.Center)
             )
         }
+    }
+
+    if (cameraViewState.error != null) {
+        Toast.makeText(context, cameraViewState.error, Toast.LENGTH_SHORT).show()
+        cameraViewModel.resetError()
     }
 }
 
