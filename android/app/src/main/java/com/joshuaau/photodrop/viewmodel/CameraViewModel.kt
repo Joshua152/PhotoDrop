@@ -102,8 +102,8 @@ class CameraViewModel: ViewModel() {
                     Bitmap.createBitmap(photo, x, y, right - x, bottom - y)
                 }
 
-                val success = uploadImage(croppedBitmap, upload.clipUploadURL) {
-                    notifyClipUploaded(upload.id)
+                val success = uploadImage(photo, upload.clipUploadURL) {
+                    notifyClipUploaded(upload.id, BoundingBox(x, y, right - x, bottom - y))
                 }
                 if (!success) {
                     return@launch
@@ -207,11 +207,11 @@ class CameraViewModel: ViewModel() {
         return true
     }
 
-    private suspend fun notifyClipUploaded(id: String): Boolean {
+    private suspend fun notifyClipUploaded(id: String, bbox: BoundingBox): Boolean {
         val response = apiInterface.notifyClipUploaded(
             NotifyClipUploadedRequest(
                 id = id,
-                shouldSegment = true
+                segmentBoundingBox = bbox
             )
         )
 

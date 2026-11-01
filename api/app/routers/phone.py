@@ -16,10 +16,17 @@ from ..imgproc import segment
 router = APIRouter(prefix='/phone', tags=['phone'])
 
 
+class BoundingBox(BaseModel):
+    top: int
+    left: int
+    width: int
+    height: int
+
+
 class ClipUpload(BaseModel):
     id: str
-    should_segment: bool
-
+    segment_bounding_box: BoundingBox | None = None
+    
 
 class ComputerPictureUpload(BaseModel):
     id: str
@@ -48,8 +55,8 @@ async def notify_clip_uploaded(clip_upload: ClipUpload):
     '''
     clip_object_key = s3.get_clip_object_name(clip_upload.id)
 
-    if clip_upload.should_segment:
-        await run_in_threadpool(_segment_uploaded_clip, clip_object_key)
+    if clip_upload.segment_bounding_box:
+        await run_in_threadpool(_segment_uploaded_clip, clip_object_key, clip_upload.segment_bounding_box)
 
     if main.computer_socket:
         clip_download_url = s3.create_presigned_download_url(clip_object_key)
@@ -90,11 +97,11 @@ async def notify_computer_picture_uploaded(computer_picture_upload: ComputerPict
         await main.computer_socket.send_text(json.dumps(send))
 
 
-def _segment_uploaded_clip(clip_object_key):
+def _segment_uploaded_clip(clip_object_key: str, bbox: BoundingBox):
     img = s3.get_image_as_cv2(clip_object_key)
 
     height, width = img.shape[:2]
-    clip, _ = segment.segment(img, (0, 0, width, height))
+    clip, _ = segment.segment(img, (max(bbox.left, 0), max(bbox.top, 0), min(bbox.width, width - bbox.left), min(bbox.height, height - bbox.top)))
     if clip.size == 0:
         raise HTTPException(status_code=422, detail='No segments found in uploaded clip')
 

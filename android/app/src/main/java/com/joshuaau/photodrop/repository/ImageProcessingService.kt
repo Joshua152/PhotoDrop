@@ -1,5 +1,6 @@
 package com.joshuaau.photodrop.repository
 
+import com.joshuaau.photodrop.viewmodel.BoundingBox
 import com.google.gson.annotations.SerializedName
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -47,8 +48,8 @@ class GetUploadURLsResponse(
 class NotifyClipUploadedRequest(
     @SerializedName("id")
     val id: String,
-    @SerializedName("should_segment")
-    val shouldSegment: Boolean
+    @SerializedName("segment_bounding_box")
+    val segmentBoundingBox: BoundingBox?
 )
 
 class NotifyComputerPictureUploadedRequest(

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,6 +33,10 @@ import kotlin.math.min
 fun ResizeableRect(modifier: Modifier = Modifier, width: Int, height: Int, onSizeChanged: (Int, Int) -> Unit) {
     var widthState by remember { mutableIntStateOf(width) }
     var heightState by remember { mutableIntStateOf(height) }
+
+    LaunchedEffect(widthState, heightState) {
+        onSizeChanged(widthState, heightState)
+    }
 
     val colorPrimary = MaterialTheme.colorScheme.primary
 
@@ -68,8 +73,6 @@ fun ResizeableRect(modifier: Modifier = Modifier, width: Int, height: Int, onSiz
                         change.consume()
                         widthState = min(max(100.dp.toPx().toInt(), widthState + 2 * dragAmount.x.toInt()), composableWidth)
                         heightState = min(max(100.dp.toPx().toInt(), heightState + 2 * dragAmount.y.toInt()), composableHeight)
-
-                        onSizeChanged(widthState, heightState)
                     }
                 }
         )

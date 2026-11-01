@@ -53,7 +53,6 @@ def calculate_clip_location(params: ComputerScreenshot):
     x /= ss_img.shape[1]
     y /= ss_img.shape[0]
     send = {
-        'message': 'clip_location',
         'x': x,
         'y': y,
     }
@@ -61,7 +60,6 @@ def calculate_clip_location(params: ComputerScreenshot):
     t4 = time.perf_counter()
     print(f'Find center: {t4-t3}')
 
-    # delete the old objects now
-    s3.delete_folder('your-bucket-name', f'{params.id}/')  
+    s3.delete_folder(s3.bucket_name, f'{params.id}/')  
 
     return send

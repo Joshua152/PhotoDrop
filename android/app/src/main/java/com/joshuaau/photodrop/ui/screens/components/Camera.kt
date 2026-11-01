@@ -1,31 +1,23 @@
 package com.joshuaau.photodrop.ui.screens.components
 
 import android.Manifest
-import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.util.Log
 import android.widget.Toast
-import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
-import androidx.camera.core.impl.utils.Exif
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -37,43 +29,32 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.exifinterface.media.ExifInterface
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
-import com.joshuaau.photodrop.MainActivity
 import com.joshuaau.photodrop.R
-import com.joshuaau.photodrop.repository.ImageProcessingService
+import com.joshuaau.photodrop.viewmodel.BoundingBox
 import com.joshuaau.photodrop.viewmodel.CameraClipState
 import com.joshuaau.photodrop.viewmodel.CameraViewModel
-import com.joshuaau.photodrop.viewmodel.CameraViewState
-import kotlinx.coroutines.launch
-import java.io.ByteArrayOutputStream
 import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -92,8 +73,10 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraProvider = cameraProviderFuture.get()
-    val preview = Preview.Builder().build()
+    val preview = remember { Preview.Builder().build() }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+
+    var isCapturing by remember { mutableStateOf(false) }
 
     var previewWidth by remember { mutableFloatStateOf(0f) }
     var previewHeight by remember { mutableFloatStateOf(0f) }
@@ -128,7 +111,9 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
-                    val previewView = PreviewView(ctx)
+                    val previewView = PreviewView(ctx).apply {
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                    }
                     cameraProviderFuture.addListener({
                         imageCapture = ImageCapture.Builder()
                             .setTargetRotation(previewView.display.rotation)
@@ -174,46 +159,61 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
 
             Button(
                 onClick = {
-                    Toast.makeText(context, "TAKING PICTURE", Toast.LENGTH_SHORT).show()
+                    val capture = imageCapture ?: return@Button
+                    val captureState = cameraViewModel.cameraState.value
+                    if (isCapturing || captureState.processingState !in setOf(
+                            CameraClipState.IDLE, CameraClipState.CLIPPED
+                        )) return@Button
 
-                    cameraViewModel.setNextProcessingState()
-                    takePicture(context, imageCapture!!) { bm ->
-                        if (bm == null) {
-                            Toast.makeText(context, "Error taking picture", Toast.LENGTH_SHORT).show()
-                            return@takePicture
+                    // Keep the previous processing state until a photo is available.
+                    // Use these captured values even if the UI recomposes during capture.
+                    val capturePreviewWidth = previewWidth
+                    val capturePreviewHeight = previewHeight
+                    isCapturing = true
+                    try {
+                        takePicture(context, capture) { bitmap ->
+                            isCapturing = false
+                            if (bitmap == null) {
+                                cameraViewModel.setError("Error taking picture. Please try again.")
+                                return@takePicture
+                            }
 
+                            when (captureState.processingState) {
+                                CameraClipState.IDLE -> {
+                                    // Invert the preview's centered fill scaling in either orientation.
+                                    val scale = max(
+                                        capturePreviewWidth / bitmap.width,
+                                        capturePreviewHeight / bitmap.height
+                                    )
+                                    val width = (captureState.bboxWidth / scale)
+                                        .roundToInt().coerceIn(1, bitmap.width)
+                                    val height = (captureState.bboxHeight / scale)
+                                        .roundToInt().coerceIn(1, bitmap.height)
+                                    cameraViewModel.uploadClip(
+                                        bitmap,
+                                        BoundingBox(
+                                            (bitmap.width - width) / 2,
+                                            (bitmap.height - height) / 2,
+                                            width,
+                                            height
+                                        )
+                                    )
+                                }
+                                CameraClipState.CLIPPED -> cameraViewModel.uploadComputerImage(bitmap)
+                                else -> Unit
+                            }
                         }
-
-                        Toast.makeText(context, "PICTURE TAKEN", Toast.LENGTH_SHORT).show()
-                        Log.i("PHOTO", "Picture taken")
-
-                        fun clip() {
-                            val ratio = bm.height / previewHeight
-                            val imageUnitPreviewWidth = previewWidth * ratio
-
-                            val imageUnitWidth =
-                                ((cameraViewState.bboxWidth / previewWidth) * imageUnitPreviewWidth).toInt()
-                            val imageUnitHeight =
-                                ((cameraViewState.bboxHeight / previewHeight) * bm.height).toInt()
-
-                            val offsetX = (bm.width - imageUnitWidth) / 2
-                            val offsetY = (bm.height - imageUnitHeight) / 2
-
-                            cameraViewModel.getClip(bm, "$offsetX $offsetY $imageUnitWidth $imageUnitHeight")
-                        }
-
-                        fun send() {
-                            cameraViewModel.sendImage(bm)
-                        }
-
-                        Log.i("PHOTO", "Processing state: ${cameraViewState.processingState}")
-                        when (cameraViewState.processingState) {
-                            CameraClipState.PROCESSING_CLIP -> clip()
-                            CameraClipState.SENDING -> send()
-                            else -> return@takePicture
-                        }
+                    } catch (exception: Exception) {
+                        isCapturing = false
+                        Log.e("Camera", "Could not start capture", exception)
+                        cameraViewModel.setError("Error taking picture. Please try again.")
                     }
                 },
+                enabled = !isCapturing && imageCapture != null &&
+                    previewWidth > 0 && previewHeight > 0 &&
+                    (cameraViewState.processingState == CameraClipState.CLIPPED ||
+                        (cameraViewState.processingState == CameraClipState.IDLE &&
+                            cameraViewState.bboxWidth > 0 && cameraViewState.bboxHeight > 0)),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 72.dp)
@@ -245,9 +245,11 @@ fun CameraPreview(cameraViewModel: CameraViewModel = viewModel()) {
         }
     }
 
-    if (cameraViewState.error != null) {
-        Toast.makeText(context, cameraViewState.error, Toast.LENGTH_SHORT).show()
-        cameraViewModel.resetError()
+    LaunchedEffect(cameraViewState.error) {
+        cameraViewState.error?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            cameraViewModel.resetError()
+        }
     }
 }
 
@@ -264,27 +266,33 @@ fun takePicture(context: Context, imageCapture: ImageCapture, onResult: (bitmap:
         ContextCompat.getMainExecutor(context),
         object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                val filePath = file.absolutePath
-                var bitmap = BitmapFactory.decodeFile(filePath)
-
-                val exif = ExifInterface(filePath)
-                val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-                val rotationDegrees = when (orientation) {
-                    ExifInterface.ORIENTATION_ROTATE_90 -> 90
-                    ExifInterface.ORIENTATION_ROTATE_180 -> 180
-                    ExifInterface.ORIENTATION_ROTATE_270 -> 270
-                    else -> 0
+                val bitmap = try {
+                    val decoded = requireNotNull(BitmapFactory.decodeFile(file.absolutePath)) {
+                        "Could not decode captured photo"
+                    }
+                    val exif = ExifInterface(file.absolutePath)
+                    if (exif.rotationDegrees != 0 || exif.isFlipped) {
+                        val matrix = Matrix().apply {
+                            if (exif.isFlipped) postScale(-1f, 1f)
+                            postRotate(exif.rotationDegrees.toFloat())
+                        }
+                        Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
+                    } else {
+                        decoded
+                    }
+                } catch (exception: Exception) {
+                    Log.e("Camera", "Could not decode captured photo", exception)
+                    null
+                } finally {
+                    file.delete()
                 }
-                if (rotationDegrees != 0) {
-                    val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-                    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-                }
-
                 onResult(bitmap)
             }
 
             override fun onError(exception: ImageCaptureException) {
                 Log.e("Camera", "Error on image capture: ${exception.message}", exception)
+                file.delete()
+                onResult(null)
             }
         }
     )

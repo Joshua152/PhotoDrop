@@ -16,7 +16,7 @@ struct APIEndpoint {
         baseURL = url
     }
 
-    var uploadURL: URL { baseURL.appendingPathComponent("computer-send") }
+    var calculateClipURL: URL { baseURL.appendingPathComponent("computer/calculate-clip-location") }
 
     var websocketURL: URL {
         var components = URLComponents(url: baseURL.appendingPathComponent("computer"), resolvingAgainstBaseURL: false)!
@@ -25,20 +25,26 @@ struct APIEndpoint {
     }
 }
 
-struct SendData: Encodable {
+struct CalculateLocationData: Encodable {
     var id: String
-    var img: String
 }
 
-struct NetworkClip: Decodable {
+struct ClipLocation: Decodable {
     let x: Double
     let y: Double
-    let clip: String
 }
 
 struct ReceiveSocketData: Decodable {
     let message: String
-    let id: String?
+    let id: String
+    let clipDownloadURL: String?
+    let ssUploadURL: String?
+
+    enum CodingKeys: String, CodingKey {
+        case message, id
+        case clipDownloadURL = "clip_download_url"
+        case ssUploadURL = "ss_upload_url"
+    }
 }
 
 enum PhotoDropError: LocalizedError {

@@ -18,7 +18,7 @@ class PhotoSpaceViewModel: ObservableObject {
     }
 
     @Published var clips: [Clip] = []
-    @Published var serverURL = UserDefaults.standard.string(forKey: "serverURL") ?? "http://localhost:8000"
+    @Published var serverURL = UserDefaults.standard.string(forKey: "serverURL") ?? "http://127.0.0.1:8000"
     @Published var selectedDisplayID = UInt32(UserDefaults.standard.integer(forKey: "selectedDisplayID"))
     @Published var errorMessage: String?
 
@@ -27,8 +27,8 @@ class PhotoSpaceViewModel: ObservableObject {
     let websocket = Websocket()
 
     init() {
-        websocket.onClipReceive = { [weak self] clip, displayFrame in
-            self?.onClipReceive(networkClip: clip, capturedDisplayFrame: displayFrame)
+        websocket.onClipReceive = { [weak self] clip, clipLocation, displayFrame in
+            self?.onClipReceive(clip: clip, clipLocation: clipLocation, capturedDisplayFrame: displayFrame)
         }
         websocket.capture = { [weak self] in
             try await ScreenCapture.takeScreenshot(displayID: self?.selectedDisplayID ?? 0)
@@ -68,18 +68,18 @@ class PhotoSpaceViewModel: ObservableObject {
         }
     }
 
-    func onClipReceive(networkClip: NetworkClip, capturedDisplayFrame: CGRect) {
+    func onClipReceive(clip: Data, clipLocation: ClipLocation, capturedDisplayFrame: CGRect) {
         guard let point = Self.screenPercentToCanvasCoordinates(
-            xPercent: networkClip.x,
-            yPercent: networkClip.y,
+            xPercent: clipLocation.x,
+            yPercent: clipLocation.y,
             capturedDisplayFrame: capturedDisplayFrame,
             canvasView: canvasView
         ) else {
             errorMessage = "Cannot place the clip because the canvas is unavailable or the coordinates are invalid."
             return
         }
-
-        guard let image = decodeBase64ToImage(base64Image: networkClip.clip) else {
+        
+        guard let image = dataToNSImage(pngData: clip) else {
             errorMessage = "The received clip is not a valid image."
             return
         }

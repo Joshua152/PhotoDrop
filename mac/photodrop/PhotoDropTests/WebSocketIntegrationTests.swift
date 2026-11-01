@@ -17,11 +17,11 @@ final class WebSocketIntegrationTests: XCTestCase {
             captureCount += 1
             return ScreenCapture.Result(jpegData: Data([1, 2, 3]), pngData: Data(), displayFrame: display)
         }
-        websocket.onClipReceive = { clip, capturedFrame in
-            XCTAssertEqual(clip.x, 0.4)
-            XCTAssertEqual(clip.y, 0.6)
+        websocket.onClipReceive = { clip, location, capturedFrame in
+            XCTAssertEqual(location.x, 0.4)
+            XCTAssertEqual(location.y, 0.6)
             XCTAssertEqual(capturedFrame, display)
-            XCTAssertNotNil(decodeBase64ToImage(base64Image: clip.clip))
+            XCTAssertNotNil(NSImage(data: clip))
             delivered.fulfill()
         }
         defer { websocket.disconnect() }
