@@ -20,16 +20,17 @@ struct CameraView<CameraModel: Camera>: PlatformView {
         ZStack {
             PreviewContainer(camera: camera) {
                 CameraPreview(source: camera.previewSource)
-                    .onCameraCaptureEvent(defaultSoundDisabled: true) { event in
-                        if event.phase == .ended {
-                            let sound: AVCaptureEventSound = .cameraShutter
-                            let _ = await camera.capturePhoto()
-                            
-                            if event.shouldPlaySound {
-                                event.play(sound)
-                            }
-                        }
-                    }
+                // TODO: this enables the camera capture button
+//                    .onCameraCaptureEvent(defaultSoundDisabled: true) { event in
+//                        if event.phase == .ended {
+//                            let sound: AVCaptureEventSound = .cameraShutter
+//                            let _ = await camera.capturePhoto()
+//                            
+//                            if event.shouldPlaySound {
+//                                event.play(sound)
+//                            }
+//                        }
+//                    }
                     .opacity(camera.shouldFlashScreen ? 0 : 1)
             }
             if camera.clip != nil {

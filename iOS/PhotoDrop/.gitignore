@@ -1,0 +1,7 @@
+### Xcode ###
+# Ignore personal user data inside the project file
+xcuserdata/
+
+# Ignore general build artifacts
+build/
+DerivedData/

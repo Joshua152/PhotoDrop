@@ -7,6 +7,7 @@
 
 import Vision
 import CoreImage
+import CoreImage.CIFilterBuiltins
 import os
 
 func extractForeground(from image: Photo) async -> CGImage? {

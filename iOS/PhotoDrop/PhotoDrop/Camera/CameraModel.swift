@@ -25,6 +25,8 @@ final class CameraModel: Camera {
     var clip: UIImage?
     
     private let captureService = CaptureService()
+    
+    private let api = APIClient(baseURL: "https://localhost:8000")
         
     init() {
     }
