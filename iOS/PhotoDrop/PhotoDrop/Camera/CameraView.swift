@@ -43,7 +43,8 @@ struct CameraView<CameraModel: Camera>: PlatformView {
             .contentShape(Rectangle())
             .onTapGesture {
                 Task {
-                    await camera.captureClip()
+//                    await camera.captureClip()
+                    await camera.handlePhotoAction()
                 }
             }
     }

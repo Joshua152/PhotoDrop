@@ -11,11 +11,11 @@ struct UploadURLs: Decodable {
     let clipUploadURL: String
     let computerPictureUploadURL: String
     
-    // TODO: make sure this works with default tosnakecase in apiclient
+    // The keys will get converted to snake case in the APIClient
     enum CodingKeys: String, CodingKey {
         case id
-        case clipUploadURL = "clip_upload_url"
-        case computerPictureUploadURL = "computer_picture_upload_url"
+        case clipUploadURL = "clipUploadUrl"
+        case computerPictureUploadURL = "computerPictureUploadUrl"
     }
 }
 

@@ -47,7 +47,9 @@ class APIClient {
         path: String,
         method: HTTPMethod = .get,
         body: Encodable? = nil,
-        queryItems: [URLQueryItem]? = nil
+        queryItems: [URLQueryItem]? = nil,
+        contentType: String = "application/json",
+        accept: String = "application/json"
     ) async throws -> T {
         guard var urlComponents = URLComponents(string: baseURL + path) else {
             throw APIError.invalidURL
@@ -60,8 +62,8 @@ class APIClient {
         
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue(accept, forHTTPHeaderField: "Accept")
         
         if let body {
             request.httpBody = try encoder.encode(body)
@@ -95,7 +97,8 @@ class APIClient {
     func requestNoContent(
         path: String,
         method: HTTPMethod = .delete,
-        body: Encodable? = nil
+        body: Encodable? = nil,
+        contentType: String = "application/json"
     ) async throws {
         guard let url = URL(string: baseURL + path) else {
             throw APIError.invalidURL
@@ -105,7 +108,7 @@ class APIClient {
         request.httpMethod = method.rawValue
         
         if let body {
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
             request.httpBody = try encoder.encode(body)
         }
         

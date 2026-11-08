@@ -9,8 +9,11 @@ import SwiftUI
 
 protocol Camera: AnyObject, SendableMetatype {
     
+    /// Provides the current clip status of the app
+    var clipStatus: ClipStatus { get }
+    
     /// Provides the current status of the camera
-    var status: CameraStatus { get }
+    var cameraStatus: CameraStatus { get }
     
     /// The camera's current activity state (photo capture, idle)
     var captureActivity: CaptureActivity { get }
@@ -27,15 +30,9 @@ protocol Camera: AnyObject, SendableMetatype {
     /// Performs a one-time automatic focus and exposure operation
     func focusAndExpose(at point: CGPoint) async
     
-    /// Captures a photo and writes it to the user's photo library
-    func capturePhoto() async -> Photo?
+    /// Handles the actions for a photo (should keep track of state)
+    func handlePhotoAction() async
     
-    /// Captures a photo and extracts the clip from it into the clip variable
-    func captureClip() async
-    
-//    /// Extract the masked clip from an image
-//    func extractClip(from image: Photo) async -> UIImage?
-
     /// A boolean value that indicates whether to show visual feedback when capture begins
     var shouldFlashScreen: Bool { get }
     

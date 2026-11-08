@@ -33,7 +33,7 @@ nonisolated final class PhotoCapture {
     }
     
     private func createPhotoSettings() -> AVCapturePhotoSettings {
-        let photoSettings = AVCapturePhotoSettings()
+        let photoSettings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])
         
         if let previewPhotoPixelFormatType = photoSettings.availablePreviewPhotoPixelFormatTypes.first {
             photoSettings.previewPhotoFormat = [kCVPixelBufferPixelFormatTypeKey as String: previewPhotoPixelFormatType]

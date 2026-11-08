@@ -8,6 +8,14 @@
 import SwiftUI
 import Foundation
 
+enum ClipStatus {
+    /// A status that indicates the app is waiting for the next clip
+    case waitingForClip
+    
+    /// A status that indicates the app is waiting for the computer paste location image
+    case waitingForPasteLoc
+}
+
 enum CameraStatus {
     /// The initial state upon creation
     case unknown
